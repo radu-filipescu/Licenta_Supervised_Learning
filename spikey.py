@@ -67,6 +67,9 @@ if __name__ == '__main__':
     train_sequences = np.tile(train_images[:, None], (1, n_steps, 1, 1))
     test_sequences = np.tile(test_images[:, None], (1, n_steps, 1, 1))
 
+    print('train shape', train_labels.shape)
+    #print('test shape', test_sequences.shape)
+
     spiking_model = tf.keras.Sequential(
         [
             # add temporal dimension to the input shape; we can set it to None,

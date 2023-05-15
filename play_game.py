@@ -1,9 +1,13 @@
 import time
 from PIL import Image
+from keras.saving.object_registration import custom_object_scope
 from mss import mss
 import keyboard
 import numpy as np
 from keras.models import model_from_json
+import tensorflow as tf
+
+import keras_spiking
 
 frame = {"top":100, "left":1100, "width":160, "height":150} # Borders of the screenshot
 ss_manager = mss()  # We are using mss() for taking a screenshot
@@ -45,16 +49,23 @@ def exit():
 if __name__ == '__main__':
     keyboard.add_hotkey("esc", exit)  # If user clik the 'esc', the program will stop
 
+    spike_act = keras_spiking.SpikingActivation("relu", spiking_aware_training=False)
+
+    with custom_object_scope({'SpikingActivation': spike_act}):
+        model = model_from_json(open("model.json", "r").read())
+        model.load_weights("weights.h5")
+
+
     # Load the model and weights
-    model = model_from_json(open("model.json", "r").read())
-    model.load_weights("weights.h5")
+    #model = model_from_json(open("model.json", "r").read())
+    #model.load_weights("weights.h5")
 
     print('Press enter key to start playing')
     input()
     print('Playing starting in')
-    for i in range(5):
-        print(5 - i)
-        time.sleep(1)
+    # for i in range(5):
+    #     print(5 - i)
+    #     time.sleep(1)
 
     while True:
         if is_exit == True:
@@ -71,6 +82,10 @@ if __name__ == '__main__':
 
         X = np.array([img])  # Convert list X to numpy array
         X = X.reshape(X.shape[0], width, height, 1)  # Reshape the X
+
+        X = tf.expand_dims(X, axis=0)
+        X = tf.tile(X, [1, 10, 1, 1, 1])
+
         prediction = model.predict(X)  # Get prediction by using the model
 
         result = np.argmax(prediction)  # Convert one-hot prediction to the number
