@@ -20,14 +20,14 @@ height = 75  # Height of all images
 
 # A function for go down in the game
 def down():
-    keyboard.release("right")
+    # keyboard.release("right")
     keyboard.release(keyboard.KEY_UP)
     keyboard.press(keyboard.KEY_DOWN)
 
 
 # A function for go up in the game
 def up():
-    keyboard.release("right")
+    # keyboard.release("right")
     keyboard.release(keyboard.KEY_DOWN)
     keyboard.press(keyboard.KEY_UP)
 
@@ -35,8 +35,8 @@ def up():
 # A function for go right in the game
 def right():
     keyboard.release(keyboard.KEY_UP)
-    keyboard.release(keyboard.KEY_DOWN)
-    keyboard.press("right")
+    # keyboard.release(keyboard.KEY_DOWN)
+    # keyboard.press("right")
 
 
 # A function for stopping the program
@@ -55,18 +55,16 @@ if __name__ == '__main__':
         model = model_from_json(open("model.json", "r").read())
         model.load_weights("weights.h5")
 
-
-    # Load the model and weights
-    #model = model_from_json(open("model.json", "r").read())
-    #model.load_weights("weights.h5")
-
     print('Press enter key to start playing')
     input()
     print('Playing starting in')
-    # for i in range(5):
-    #     print(5 - i)
-    #     time.sleep(1)
+    for i in range(5):
+        print(5 - i)
+        time.sleep(1)
 
+    n_steps = 10
+
+    up()
     while True:
         if is_exit == True:
             keyboard.release("right")
@@ -83,8 +81,8 @@ if __name__ == '__main__':
         X = np.array([img])  # Convert list X to numpy array
         X = X.reshape(X.shape[0], width, height, 1)  # Reshape the X
 
-        X = tf.expand_dims(X, axis=0)
-        X = tf.tile(X, [1, 10, 1, 1, 1])
+        # for spike networks
+        X = tf.tile(X[:, None], [1, n_steps, 1, 1, 1])
 
         prediction = model.predict(X)  # Get prediction by using the model
 

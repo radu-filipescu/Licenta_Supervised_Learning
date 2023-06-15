@@ -3,6 +3,7 @@ import numpy as np
 import tensorflow as tf
 
 import keras_spiking
+from tensorflow.python.keras.models import Sequential
 
 tf.random.set_seed(0)
 np.random.seed(0)
@@ -38,14 +39,6 @@ if __name__ == '__main__':
         plt.axis("off")
         plt.title(class_names[train_labels[i]])
 
-    model = tf.keras.Sequential(
-        [
-            tf.keras.layers.Flatten(input_shape=(28, 28)),
-            tf.keras.layers.Dense(128, activation="relu"),
-            tf.keras.layers.Dense(10),
-        ]
-    )
-
     #train(model, train_images, test_images)
 
 
@@ -56,6 +49,8 @@ if __name__ == '__main__':
             metrics=["accuracy"],
         )
 
+        print(train_labels.shape)
+
         input_model.fit(train_x, train_labels, epochs=10)
 
         _, test_acc = input_model.evaluate(test_x, test_labels, verbose=2)
@@ -63,29 +58,94 @@ if __name__ == '__main__':
         print("\nTest accuracy:", test_acc)
 
     # repeat the images for n_steps
-    n_steps = 10
+    n_steps = 3
+
+    print(train_images.shape)
     train_sequences = np.tile(train_images[:, None], (1, n_steps, 1, 1))
+    print(train_images[:, None].shape)
+
     test_sequences = np.tile(test_images[:, None], (1, n_steps, 1, 1))
 
-    print('train shape', train_labels.shape)
+    train_sequences = tf.expand_dims(train_sequences, axis=-1)
+
+
+
+    #print('train shape', train_sequences.shape)
     #print('test shape', test_sequences.shape)
 
-    spiking_model = tf.keras.Sequential(
-        [
-            # add temporal dimension to the input shape; we can set it to None,
-            # to allow the model to flexibly run for different lengths of time
-            tf.keras.layers.Reshape((-1, 28 * 28), input_shape=(None, 28, 28)),
-            # we can use Keras' TimeDistributed wrapper to allow the Dense layer
-            # to operate on temporal data
-            tf.keras.layers.TimeDistributed(tf.keras.layers.Dense(128)),
-            # replace the "relu" activation in the non-spiking model with a
-            # spiking equivalent
-            keras_spiking.SpikingActivation("relu", spiking_aware_training=False),
-            # use average pooling layer to average spiking output over time
-            tf.keras.layers.GlobalAveragePooling1D(),
-            tf.keras.layers.Dense(10),
-        ]
-    )
+    # THE GOOD ONE
+    # spiking_model = tf.keras.Sequential(
+    #     [
+    #         # add temporal dimension to the input shape; we can set it to None,
+    #         # to allow the model to flexibly run for different lengths of time
+    #         tf.keras.layers.Reshape((-1, 28 * 28), input_shape=(None, 28, 28)),
+    #         # we can use Keras' TimeDistributed wrapper to allow the Dense layer
+    #         # to operate on temporal data
+    #         tf.keras.layers.TimeDistributed(tf.keras.layers.Dense(128)),
+    #         # replace the "relu" activation in the non-spiking model with a
+    #         # spiking equivalent
+    #         keras_spiking.SpikingActivation("relu", spiking_aware_training=False),
+    #         # use average pooling layer to average spiking output over time
+    #         tf.keras.layers.GlobalAveragePooling1D(),
+    #         tf.keras.layers.Dense(10),
+    #     ]
+    # )
+
+    model = Sequential()
+
+    model.add(tf.keras.layers.TimeDistributed(tf.keras.layers.Conv2D(16, kernel_size=(3, 3), input_shape=(28, 28, 1))))
+    model.add(keras_spiking.SpikingActivation("relu", spiking_aware_training=False))
+    model.add(tf.keras.layers.TimeDistributed(tf.keras.layers.MaxPooling2D(pool_size=(2, 2))))
+    model.add(tf.keras.layers.TimeDistributed(tf.keras.layers.Conv2D(32, kernel_size=(3, 3))))
+    model.add(keras_spiking.SpikingActivation("relu", spiking_aware_training=False))
+    model.add(tf.keras.layers.TimeDistributed(tf.keras.layers.MaxPooling2D(pool_size=(2, 2))))
+    model.add(tf.keras.layers.TimeDistributed(tf.keras.layers.Conv2D(64, kernel_size=(3, 3))))
+    model.add(keras_spiking.SpikingActivation("relu", spiking_aware_training=False))
+    model.add(tf.keras.layers.TimeDistributed(tf.keras.layers.MaxPooling2D(pool_size=(2, 2))))
+    model.add(tf.keras.layers.TimeDistributed(tf.keras.layers.Flatten()))
+    model.add(tf.keras.layers.TimeDistributed(tf.keras.layers.Dense(128)))
+    model.add(keras_spiking.SpikingActivation("relu", spiking_aware_training=False))
+
+    model.add(tf.keras.layers.GlobalAveragePooling1D())
+    model.add(tf.keras.layers.Dense(10))
+
+    spiking_model = model
+    # GOOD ENOUGH
+    # mzg = tf.keras.Sequential(
+    #         [
+    #             tf.keras.layers.Conv2D(64, kernel_size=(3, 3), padding='same',
+    #                    input_shape=(28, 28, 1)),
+    #             keras_spiking.SpikingActivation("relu", spiking_aware_training=False),
+    #             tf.keras.layers.Conv2D(64, kernel_size=(3, 3)),
+    #             keras_spiking.SpikingActivation("relu", spiking_aware_training=False),
+    #             tf.keras.layers.MaxPooling2D(pool_size=(2, 2)),
+    #             tf.keras.layers.Conv2D(128, kernel_size=(3, 3), padding='same'),
+    #             keras_spiking.SpikingActivation("relu", spiking_aware_training=False),
+    #             tf.keras.layers.Conv2D(128, kernel_size=(3, 3)),
+    #             keras_spiking.SpikingActivation("relu", spiking_aware_training=False),
+    #             tf.keras.layers.MaxPooling2D(pool_size=(2, 2)),
+    #             tf.keras.layers.Conv2D(256, kernel_size=(3, 3), padding='same'),
+    #             keras_spiking.SpikingActivation("relu", spiking_aware_training=False),
+    #             tf.keras.layers.Conv2D(256, kernel_size=(3, 3)),
+    #             keras_spiking.SpikingActivation("relu", spiking_aware_training=False),
+    #             tf.keras.layers.MaxPooling2D(pool_size=(2, 2)),
+    #             tf.keras.layers.Flatten(),
+    #             tf.keras.layers.Dense(1024, activation='relu'),
+    #             tf.keras.layers.Dense(512, activation='relu'),
+    #         ]
+    #     )
+    #
+    # spiking_model = tf.keras.Sequential([
+    #     tf.keras.layers.TimeDistributed(mzg),
+    #
+    #     # replace the "relu" activation in the non-spiking model with a
+    #     # spiking equivalent
+    #     keras_spiking.SpikingActivation("relu", spiking_aware_training=False),
+    #     # use average pooling layer to average spiking output over time
+    #     tf.keras.layers.GlobalAveragePooling1D(),
+    #     tf.keras.layers.Dense(10),
+    # ])
+
 
     # train the model, identically to the non-spiking version,
     # except using the time sequences as inputs

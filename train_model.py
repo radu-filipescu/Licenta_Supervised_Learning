@@ -52,33 +52,51 @@ def onehot_labels(labels):
     return onehot_labels
 
 
-def get_spike_CNN_model():
-    mzg_layer = tf.keras.Sequential( [
-        tf.keras.layers.Conv2D(16, kernel_size=(3, 3), input_shape=(width, height, 1)),
-        keras_spiking.SpikingActivation("relu", spiking_aware_training=False),
-        tf.keras.layers.MaxPooling2D(pool_size=(2, 2)),
-        keras_spiking.SpikingActivation("relu", spiking_aware_training=False),
-        tf.keras.layers.Conv2D(32, kernel_size=(3, 3)),
-        keras_spiking.SpikingActivation("relu", spiking_aware_training=False),
-        tf.keras.layers.MaxPooling2D(pool_size=(2, 2)),
-        keras_spiking.SpikingActivation("relu", spiking_aware_training=False),
-        tf.keras.layers.Conv2D(64, kernel_size=(3, 3)),
-        keras_spiking.SpikingActivation("relu", spiking_aware_training=False),
-        tf.keras.layers.MaxPooling2D(pool_size=(2, 2)),
-        keras_spiking.SpikingActivation("relu", spiking_aware_training=False),
-        tf.keras.layers.Flatten(),
+def get_spike_model():
+    spiking_model = tf.keras.Sequential(
+        [
+            # add temporal dimension to the input shape; we can set it to None,
+            # to allow the model to flexibly run for different lengths of time
+            tf.keras.layers.Reshape((-1, width * height), input_shape=(None, width, height, 1)),
+            # we can use Keras' TimeDistributed wrapper to allow the Dense layer
+            # to operate on temporal data
+            tf.keras.layers.TimeDistributed(tf.keras.layers.Dense(128)),
+            # replace the "relu" activation in the non-spiking model with a
+            # spiking equivalent
+            keras_spiking.SpikingActivation("relu", spiking_aware_training=False),
+            # use average pooling layer to average spiking output over time
+            tf.keras.layers.GlobalAveragePooling1D(),
+            tf.keras.layers.Dense(3),
         ]
     )
-
-    spiking_model = tf.keras.Sequential([
-        tf.keras.layers.TimeDistributed(mzg_layer),
-        tf.keras.layers.GlobalAveragePooling1D(),
-        tf.keras.layers.Dense(3),
-        ])
 
     spiking_model.compile(loss="categorical_crossentropy", optimizer="adam", metrics=["accuracy"])
 
     return spiking_model
+
+
+def get_spike_CNN_model():
+    model = Sequential()
+
+    model.add(tf.keras.layers.TimeDistributed(tf.keras.layers.Conv2D(16, kernel_size=(3, 3), input_shape=(width, height, 1))))
+    model.add(keras_spiking.SpikingActivation("relu", spiking_aware_training=False))
+    model.add(tf.keras.layers.TimeDistributed(tf.keras.layers.MaxPooling2D(pool_size=(2, 2))))
+    model.add(tf.keras.layers.TimeDistributed(tf.keras.layers.Conv2D(32, kernel_size=(3, 3))))
+    model.add(keras_spiking.SpikingActivation("relu", spiking_aware_training=False))
+    model.add(tf.keras.layers.TimeDistributed(tf.keras.layers.MaxPooling2D(pool_size=(2, 2))))
+    model.add(tf.keras.layers.TimeDistributed(tf.keras.layers.Conv2D(64, kernel_size=(3, 3))))
+    model.add(keras_spiking.SpikingActivation("relu", spiking_aware_training=False))
+    model.add(tf.keras.layers.TimeDistributed(tf.keras.layers.MaxPooling2D(pool_size=(2, 2))))
+    model.add(tf.keras.layers.TimeDistributed(tf.keras.layers.Flatten()))
+    model.add(tf.keras.layers.TimeDistributed(tf.keras.layers.Dense(128)))
+    model.add(keras_spiking.SpikingActivation("relu", spiking_aware_training=False))
+
+    model.add(tf.keras.layers.GlobalAveragePooling1D())
+    model.add(tf.keras.layers.Dense(3))
+
+    model.compile(loss="categorical_crossentropy", optimizer="adam", metrics=["accuracy"])
+
+    return model
 
 
 # A function for create a CNN model and return it
@@ -164,29 +182,23 @@ if __name__ == "__main__":
     images = glob.glob("./images/*.png")  # Get all image paths with glob
 
     X, Y = get_images_and_labels(images)  # Get images and their labels
-
     plot_data()  # Plot number of data categorical
 
     Y = onehot_labels(Y)  # Convert labels to onehot labels ==> down: 100, right: 010, up: 001
 
     train_X, test_X, train_y, test_y = train_test_split(X, Y, test_size=0.1, random_state=10)  # Split the dataset
 
-
     n_steps = 10
-    train_X = tf.transpose(train_X, perm=[0, 3, 1, 2])
-    train_X = tf.tile(train_X, [1, 10, 1, 1])
-    train_X = tf.expand_dims(train_X, axis=-1)
 
-    test_X = tf.transpose(test_X, perm=[0, 3, 1, 2])
-    test_X = tf.tile(test_X, [1, 10, 1, 1])
-    test_X = tf.expand_dims(test_X, axis=-1)
+    # this is for spike networks (creating temporal axis)
+    #train_X = tf.tile(train_X[:, None], [1, n_steps, 1, 1, 1])
+    #test_X = tf.tile(test_X[:, None], [1, n_steps, 1, 1, 1])
 
-    #model = get_CNN_model()
-    model = get_spike_CNN_model()
+    model = get_CNN_model()
+    #model = get_spike_CNN_model()
+    #model = get_spike_model()
 
-    #print(train_X.shape)
-
-    history = model.fit(train_X, train_y, epochs=1, batch_size=64)
+    history = model.fit(train_X, train_y, epochs=3, batch_size=64)
     print(model.summary())  # Print model summary
 
     train_accuracy = model.evaluate(train_X, train_y)
