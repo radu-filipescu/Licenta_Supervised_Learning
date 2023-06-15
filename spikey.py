@@ -1,3 +1,5 @@
+# PROIECTUL INIȚIAL: https://github.com/frhtas/AI-Dino
+
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf

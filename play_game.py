@@ -1,3 +1,5 @@
+# PROIECTUL INIȚIAL: https://github.com/frhtas/AI-Dino
+
 import time
 from PIL import Image
 from keras.saving.object_registration import custom_object_scope
@@ -9,7 +11,7 @@ import tensorflow as tf
 
 import keras_spiking
 
-frame = {"top":100, "left":1100, "width":160, "height":150} # Borders of the screenshot
+frame = {"top" :100, "left": 1100, "width": 160, "height": 150} # Borders of the screenshot
 ss_manager = mss()  # We are using mss() for taking a screenshot
 is_exit = False  # A variable for stopping the program
 my_timer = 0  # A variable which store the time passed

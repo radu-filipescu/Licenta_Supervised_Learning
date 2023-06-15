@@ -1,3 +1,5 @@
+# PROIECTUL INIȚIAL: https://github.com/frhtas/AI-Dino
+
 import time
 from PIL import Image
 from mss import mss
